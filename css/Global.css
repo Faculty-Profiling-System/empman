@@ -169,26 +169,6 @@ h1, h2 {
   color: #a78bfa;
 }
 
-.btn-outline-secondary {
-  border-color: #edf768;
-  color: #f7b468;
-}
-
-.btn-outline-primary:hover {
-  background: linear-gradient(90deg, #4f46e5, #3b82f6);
-  border: none;
-  color: #fff;
-  box-shadow: 0 0 12px rgba(79, 70, 229, 0.5);
-}
-
-.btn-outline-secondary:hover {
-  background: linear-gradient(90deg, #edf768, #f09731);
-  border: none;
-  color: #fff;
-  box-shadow: 0 0 12px rgba(247, 222, 0, 0.5);
-}
-
-
 .btn-outline-success {
   border-color: #22c55e;
   color: #86efac;

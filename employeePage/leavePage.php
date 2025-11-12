@@ -221,7 +221,7 @@ if (isset($_GET['success'])) {
                                         <td><?php echo $submittedDate; ?></td>
                                         <td>
                                             <?php if ($row['status'] === 'Pending' || $row['status'] === 'In Process'): ?>
-                                                <button class="btn btn-sm btn-outline-secondary edit-leave-btn" 
+                                                <button class="btn btn-sm btn-outline-primary edit-leave-btn" 
                                                         data-leave-id="<?php echo $row['leave_id']; ?>"
                                                         data-leave-type="<?php echo $row['leave_type_id']; ?>"
                                                         data-start-date="<?php echo $row['start_date']; ?>"
