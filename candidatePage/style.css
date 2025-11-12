@@ -1,0 +1,196 @@
+/* Basic page */
+body {
+  height: 100%;
+  margin: 0;
+  background-color: #f8f9fa;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+#wrapper {
+  display: flex;
+  min-height: 100vh;
+  transition: all 0.25s ease-in-out;
+}
+
+/* Sidebar */
+#sidebar-wrapper {
+  width: 250px;
+  background: linear-gradient(135deg, #0d6efd 0%, #084298 100%);
+  color: #fff;
+  transition: margin 0.25s ease-in-out;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.06);
+}
+
+#sidebar-wrapper .sidebar-header {
+  background: rgba(255,255,255,0.03);
+}
+
+.avatar, .avatar-lg {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  background: rgba(255,255,255,0.15);
+  color:#fff;
+  font-weight:700;
+}
+
+.avatar-lg { width:88px; height:88px; font-size:26px; }
+
+.list-group-item {
+  border: none;
+  padding: .65rem .9rem;
+  margin: .25rem 0;
+  border-radius: .4rem !important;
+  background-color: transparent !important;
+}
+
+.list-group-item:hover {
+  background: rgba(255,255,255,0.06) !important;
+}
+
+#page-content-wrapper { width:100%; }
+
+/* Hide sidebar when toggled */
+#wrapper.toggled #sidebar-wrapper { margin-left: -250px; }
+
+.navbar { z-index: 1000; }
+
+/* Job card tweaks */
+.job-card .card { border:0; }
+.job-card h5 { font-size:1.05rem; }
+
+/* Small screens: collapse sidebar by default */
+@media (max-width: 767.98px) {
+  #sidebar-wrapper { position: absolute; left:0; top:0; bottom:0; z-index:1040; transform: translateX(-110%); }
+  #wrapper.toggled #sidebar-wrapper { transform: translateX(0); }
+  #page-content-wrapper { width:100%; }
+}
+
+/* subtle card shadows */
+.card.shadow-sm { box-shadow: 0 6px 18px rgba(16,24,40,0.04); }
+
+/* small helper */
+.text-white-50 { color: rgba(255,255,255,0.85); }
+
+/* Job card hover and apply button style */
+.job-card .card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.job-card .card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 30px rgba(16,24,40,0.08);
+}
+.job-card .company { color: #6c757d; }
+.job-card .location { font-size: 0.85rem; color: #6c757d; }
+
+.btn-apply {
+  border-radius: 0.5rem;
+  padding: .5rem .6rem;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.btn-apply:active { transform: translateY(1px); }
+
+/* Sidebar active visual cue */
+#sidebar-wrapper .list-group-item.active {
+  background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+  border-left: 4px solid rgba(255,255,255,0.22) !important;
+  color: #fff !important;
+}
+
+/* Table badge variants */
+.badge-status {
+  min-width: 80px;
+  display:inline-block;
+}
+.badge-status.applied { background:#0d6efd; }
+.badge-status.rejected { background:#dc3545; }
+.badge-status.shortlist { background:#ffc107; color:#212529; }
+
+/* Footer */
+footer.site-footer { background: #fff; border-top: 1px solid #ececec; }
+
+/* Slightly larger container padding on wide screens */
+@media (min-width: 1200px) {
+  main.container-fluid { padding-left: 80px; padding-right: 80px; }
+}
+
+/* Inline icon (mini) styles */
+.icon { width:1.05em; height:1.05em; vertical-align:-0.125em; fill:currentColor; }
+.list-group-item .icon { margin-right: .5rem; }
+
+/* Staggered entrance animation for job cards (CSS-only)
+   Uses nth-child delays so cards animate in sequence when added to DOM.
+*/
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.job-card .card {
+  opacity: 0;
+  transform: translateY(10px);
+  animation-name: slideUpFade;
+  animation-duration: 360ms;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(.2,.9,.35,1);
+}
+.job-card:nth-child(1) .card { animation-delay: 0ms; }
+.job-card:nth-child(2) .card { animation-delay: 60ms; }
+.job-card:nth-child(3) .card { animation-delay: 120ms; }
+.job-card:nth-child(4) .card { animation-delay: 180ms; }
+.job-card:nth-child(5) .card { animation-delay: 240ms; }
+.job-card:nth-child(6) .card { animation-delay: 300ms; }
+.job-card:nth-child(7) .card { animation-delay: 360ms; }
+.job-card:nth-child(8) .card { animation-delay: 420ms; }
+.job-card:nth-child(9) .card { animation-delay: 480ms; }
+.job-card:nth-child(10) .card { animation-delay: 540ms; }
+.job-card:nth-child(11) .card { animation-delay: 600ms; }
+.job-card:nth-child(12) .card { animation-delay: 660ms; }
+
+/* If many cards are present, limit transform smoothness */
+.job-card .card { will-change: transform, opacity; }
+
+/* Theme variables */
+:root{
+  --primary-500: #0d6efd;
+  --muted-500: #6c757d;
+  --card-bg: #ffffff;
+  --panel-bg: #f8f9fa;
+}
+
+/* Hero / banner */
+.hero {
+  background: linear-gradient(90deg, rgba(13,110,253,0.04), rgba(13,110,253,0.02));
+  border: 1px solid rgba(13,110,253,0.03);
+  border-radius: .5rem;
+}
+.hero .lead { color: var(--muted-500); }
+
+/* Job card structure */
+.job-card .card-body {
+  display:flex;
+  flex-direction:column;
+  gap: .6rem;
+}
+.job-card .meta {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.job-card .company { color: var(--muted-500); font-size:0.92rem; }
+.job-card .location { font-size: 0.82rem; color:var(--muted-500); }
+.job-card .job-actions { display:flex; gap:.5rem; }
+.job-card .btn-apply { flex:1; }
+
+/* Empty state illustration box */
+.empty-illustration {
+  display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; padding:30px; color:var(--muted-500);
+}
+.empty-illustration svg { max-width:180px; opacity:0.9; }
+
+/* Slightly larger buttons on desktop */
+@media(min-width: 992px){
+  .btn-apply { padding: .6rem .9rem; }
+}
