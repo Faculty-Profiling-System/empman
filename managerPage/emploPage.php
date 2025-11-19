@@ -9,8 +9,7 @@ $currentEmployeeID = $_SESSION['employeeID'];
 
 $managerDeptQuery = "SELECT p.department_id 
                      FROM employees e
-                     JOIN applications a ON e.application_id = a.application_id
-                     JOIN positions p ON a.position_id = p.position_id
+                     JOIN positions p ON e.position_id = p.position_id
                      WHERE e.employee_id = '$currentEmployeeID'";
 $managerDeptResult = mysqli_query($con, $managerDeptQuery);
 
@@ -53,6 +52,25 @@ if ($managerDeptResult && mysqli_num_rows($managerDeptResult) > 0) {
           </div>
         </div>
 
+        <!-- Display Success/Error Messages -->
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>
+                <?php echo $_SESSION['success']; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <?php unset($_SESSION['success']); ?>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                <?php echo $_SESSION['error']; ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <?php unset($_SESSION['error']); ?>
+        <?php endif; ?>
+
         <!-- Employees Table Card -->
         <div class="card shadow-sm mb-4">
           <div class="card-header">
@@ -84,8 +102,7 @@ if ($managerDeptResult && mysqli_num_rows($managerDeptResult) > 0) {
                           d.department_name
                         FROM employees e
                         JOIN candidates c ON e.candidate_id = c.candidate_id
-                        JOIN applications a ON e.application_id = a.application_id
-                        JOIN positions p ON a.position_id = p.position_id
+                        JOIN positions p ON e.position_id = p.position_id
                         JOIN departments d ON p.department_id = d.department_id
                         WHERE e.status = 'Active' 
                         AND d.department_id = '$managerDepartmentId'";//eto tatanggalin sa hr para lahat ng employee despite their department can be displayed sa hr page
@@ -96,7 +113,6 @@ if ($managerDeptResult && mysqli_num_rows($managerDeptResult) > 0) {
                           $employeeDetails = [];
                           
                           while($row = mysqli_fetch_assoc($result)) {
-                              // Determine badge color based on employment status
                               $badge_class = '';
                               switch($row['employment_status']) {
                                   case 'Full Time': $badge_class = 'bg-success'; break;
@@ -367,6 +383,9 @@ if ($managerDeptResult && mysqli_num_rows($managerDeptResult) > 0) {
 
               </div>
               <div class="modal-footer">
+                <button type="button" class="btn btn-warning" id="changePositionBtn">
+                    <i class="fas fa-exchange-alt me-1"></i> Change Position
+                </button>
                   <button type="button" class="btn btn-danger" data-bs-dismiss="modal">
                       <i class="fa-solid fa-ban me-1"></i> Close
                   </button>
@@ -375,321 +394,105 @@ if ($managerDeptResult && mysqli_num_rows($managerDeptResult) > 0) {
       </div>
   </div>
 
+<!-- Position Change Modal -->
+<div class="modal fade" id="positionChangeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form action="handle_position_change.php" method="POST" id="positionChangeForm">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-exchange-alt me-2"></i>Change Employee Position</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Current Position</label>
+                            <input type="text" class="form-control" id="currentPositionDisplay" disabled>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Current Department</label>
+                            <input type="text" class="form-control" id="currentDepartmentDisplay" disabled>
+                        </div>
+                    </div>
+                    
+                    <input type="hidden" name="employee_id" id="formEmployeeId">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select New Position</label>
+                        <select class="form-select" name="proposed_position_id" id="newPositionSelect" required>
+                            <option value="">-- Choose a position --</option>
+                            <?php
+                            // Query to get all available positions
+                            $positionsQuery = "SELECT p.position_id, p.position_name, d.department_name, d.department_id 
+                                             FROM positions p 
+                                             JOIN departments d ON p.department_id = d.department_id 
+                                             ORDER BY d.department_name, p.position_name";
+                            $positionsResult = mysqli_query($con, $positionsQuery);
+                            
+                            $currentDepartmentPositions = [];
+                            $otherDepartmentPositions = [];
+                            
+                            while ($position = mysqli_fetch_assoc($positionsResult)) {
+                                if ($position['department_id'] == $managerDepartmentId) {
+                                    $currentDepartmentPositions[] = $position;
+                                } else {
+                                    $otherDepartmentPositions[] = $position;
+                                }
+                            }
+                            
+                            // Display current department positions first
+                            if (!empty($currentDepartmentPositions)) {
+                                echo '<optgroup label="Current Department Positions">';
+                                foreach ($currentDepartmentPositions as $position) {
+                                    echo "<option value='{$position['position_id']}' data-dept='{$position['department_name']}'>
+                                            {$position['position_name']} - {$position['department_name']}
+                                          </option>";
+                                }
+                                echo '</optgroup>';
+                            }
+                            
+                            // Display other department positions
+                            if (!empty($otherDepartmentPositions)) {
+                                echo '<optgroup label="Other Department Positions">';
+                                foreach ($otherDepartmentPositions as $position) {
+                                    echo "<option value='{$position['position_id']}' data-dept='{$position['department_name']}'>
+                                            {$position['position_name']} - {$position['department_name']}
+                                          </option>";
+                                }
+                                echo '</optgroup>';
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Change Type</label>
+                        <select class="form-select" name="change_type" id="changeTypeSelect" required>
+                            <option value="Promotion">Select Change Type</option>
+                            <option value="Promote">Promote</option>
+                            <option value="Demote">Demote</option>
+                            <option value="Transfer">Transfer</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Reason for Change</label>
+                        <textarea class="form-control" name="reason" id="changeReason" rows="3" placeholder="Explain the reason for this position change..." required></textarea>
+                    </div>
+                    
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-1"></i> Submit Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script src="../bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script>
-  document.addEventListener('DOMContentLoaded', function() {
-      const detailButtons = document.querySelectorAll('.see-details-btn');
-
-      detailButtons.forEach(btn => {
-          btn.addEventListener('click', function() {
-              const employeeId = this.dataset.employeeId;
-              const employeeData = employeeDetails[employeeId];
-              
-              if (!employeeData) {
-                  alert('Employee data not found!');
-                  return;
-              }
-              
-              populateModal(employeeData);
-          });
-      });
-      
-      function populateModal(data) {
-          const basic = data.basic;
-          
-          // Basic Information
-          document.getElementById('empName').value = basic.name || '';
-          document.getElementById('empID').value = basic.employee_id || '';
-          document.getElementById('empDepartment').value = basic.department || '';
-          document.getElementById('empPosition').value = basic.position || '';
-          document.getElementById('empBirth').value = basic.birth_date || '';
-          document.getElementById('empStatus').value = basic.employment_status || '';
-          document.getElementById('empEmail').value = basic.email || '';
-          document.getElementById('empContact').value = basic.phone || '';
-          document.getElementById('empAddress').value = basic.address || '';
-          
-          // Education
-          const educationSection = document.getElementById('educationSection');
-          educationSection.innerHTML = '';
-          if (data.education && data.education.length > 0) {
-              data.education.forEach(edu => {
-                  const educationDiv = document.createElement('div');
-                  educationDiv.className = 'border border-secondary rounded p-3 mb-3';
-                  educationDiv.innerHTML = `
-                      <div class="row">
-                          <div class="col-md-3 mb-3">
-                              <label class="form-label">Education Level</label>
-                              <input type="text" class="form-control" value="${edu.level}" disabled>
-                          </div>
-                          <div class="col-md-3 mb-3">
-                              <label class="form-label">Degree</label>
-                              <input type="text" class="form-control" value="${edu.degree}" disabled>
-                          </div>
-                          <div class="col-md-4 mb-3">
-                              <label class="form-label">School</label>
-                              <input type="text" class="form-control" value="${edu.school}" disabled>
-                          </div>
-                          <div class="col-md-2 mb-3">
-                              <label class="form-label">Year Graduated</label>
-                              <input type="text" class="form-control" value="${edu.year}" disabled>
-                          </div>
-                      </div>
-                  `;
-                  educationSection.appendChild(educationDiv);
-              });
-          } else {
-              educationSection.innerHTML = `
-                  <div class="border border-secondary rounded p-3 mb-3">
-                      <div class="mb-3">
-                          <label class="form-label">Education</label>
-                          <input type="text" class="form-control" value="No education records found" disabled>
-                      </div>
-                  </div>
-              `;
-          }
-          
-          // Work Experience
-          const experienceSection = document.getElementById('experienceSection');
-          experienceSection.innerHTML = '';
-          if (data.experience && data.experience.length > 0) {
-              data.experience.forEach(exp => {
-                  // Format dates to "Month Day, Year" format
-                  const formatDate = (dateString) => {
-                      if (!dateString || dateString === 'Not specified' || dateString === 'Present') {
-                          return dateString;
-                      }
-                      
-                      try {
-                          const date = new Date(dateString);
-                          if (isNaN(date.getTime())) {
-                              return dateString; // Return original if invalid date
-                          }
-                          
-                          return date.toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                          });
-                      } catch (error) {
-                          return dateString; // Return original if error
-                      }
-                  };
-
-                  const startDate = formatDate(exp.start_date);
-                  const endDate = formatDate(exp.end_date);
-
-                  const experienceDiv = document.createElement('div');
-                  experienceDiv.className = 'border border-secondary rounded p-3 mb-3';
-                  experienceDiv.innerHTML = `
-                      <div class="row">
-                          <div class="col-md-6 mb-3">
-                              <label class="form-label">Company</label>
-                              <input type="text" class="form-control" value="${exp.company}" disabled>
-                          </div>
-                          <div class="col-md-6 mb-3">
-                              <label class="form-label">Position</label>
-                              <input type="text" class="form-control" value="${exp.position}" disabled>
-                          </div>
-                      </div>
-                      <div class="row">
-                          <div class="col-md-6 mb-3">
-                              <label class="form-label">Start Date</label>
-                              <input type="text" class="form-control" value="${startDate}" disabled>
-                          </div>
-                          <div class="col-md-6 mb-3">
-                              <label class="form-label">End Date</label>
-                              <input type="text" class="form-control" value="${endDate}" disabled>
-                          </div>
-                      </div>
-                  `;
-                  experienceSection.appendChild(experienceDiv);
-              });
-          } else {
-              experienceSection.innerHTML = `
-                  <div class="border border-secondary rounded p-3 mb-3">
-                      <div class="mb-3">
-                          <label class="form-label">Work Experience</label>
-                          <input type="text" class="form-control" value="No work experience found" disabled>
-                      </div>
-                  </div>
-              `;
-          }
-          
-          // Skills
-          const skillsSection = document.getElementById('skillsSection');
-          skillsSection.innerHTML = '';
-          if (data.skills && data.skills.length > 0) {
-              const skillsDiv = document.createElement('div');
-              skillsDiv.className = 'border border-secondary rounded p-3 mb-3';
-              skillsDiv.innerHTML = `
-                  <div class="mb-3">
-                      <label class="form-label">Skills</label>
-                      <input type="text" class="form-control" value="${data.skills.join(', ')}" disabled>
-                  </div>
-              `;
-              skillsSection.appendChild(skillsDiv);
-          } else {
-              skillsSection.innerHTML = `
-                  <div class="border border-secondary rounded p-3 mb-3">
-                      <div class="mb-3">
-                          <label class="form-label">Skills</label>
-                          <input type="text" class="form-control" value="No skills found" disabled>
-                      </div>
-                  </div>
-              `;
-          }
-          
-          // Certifications
-          const certificationsSection = document.getElementById('certificationsSection');
-          certificationsSection.innerHTML = '';
-          if (data.certifications && data.certifications.length > 0) {
-              data.certifications.forEach(cert => {
-                  const certDiv = document.createElement('div');
-                  certDiv.className = 'border border-secondary rounded p-3 mb-3';
-                  
-                  // Check if file link exists and create appropriate HTML
-                  let fileHtml = '';
-                  if (cert.file_link && cert.file_link !== 'Cant be found' && cert.file_link !== 'Not specified') {
-                      // Create a clickable text link
-                      fileHtml = `
-                          <div class="mb-3">
-                              <label class="form-label">Certificate File</label>
-                              <div>
-                                  <a href="${cert.file_link}" target="_blank" class="text-primary text-decoration-none">
-                                      <i class="fa-solid fa-file-pdf me-1"></i> View Certificate
-                                  </a>
-                              </div>
-                          </div>
-                      `;
-                  } else {
-                      // Show message if no file available
-                      fileHtml = `
-                          <div class="mb-3">
-                              <label class="form-label">Certificate File</label>
-                              <input type="text" class="form-control" value="No file available" disabled>
-                          </div>
-                      `;
-                  }
-
-                  certDiv.innerHTML = `
-                      <div class="row">
-                          <div class="col-md-6 mb-3">
-                              <label class="form-label">Certification Name:</label>
-                              <input type="text" class="form-control" value="${cert.certificate_name}" disabled>
-                          </div>
-                      </div>
-                      ${fileHtml}
-                  `;
-                  certificationsSection.appendChild(certDiv);
-              });
-          } else {
-              certificationsSection.innerHTML = `
-                  <div class="border border-secondary rounded p-3 mb-3">
-                      <div class="mb-3">
-                          <label class="form-label">Certifications</label>
-                          <input type="text" class="form-control" value="No certifications found" disabled>
-                      </div>
-                  </div>
-              `;
-          }
-
-          populatePerformanceSection(data);
-
-
-      }
-
-      function populatePerformanceSection(data) {
-      const performanceSection = document.getElementById('performanceSection');
-      performanceSection.innerHTML = '';
-      
-      if (data.performance && Object.keys(data.performance).length > 0) {
-          Object.values(data.performance).forEach(period => {
-              const periodDiv = document.createElement('div');
-              periodDiv.className = 'border border-secondary rounded p-3 mb-3';
-              
-              let categoriesHtml = '';
-              period.categories.forEach(category => {
-                  // Create a visual rating bar
-                  const ratingPercent = (category.avg_rating / 5) * 100;
-                  categoriesHtml += `
-                      <div class="row align-items-center mb-2">
-                          <div class="col-md-6">
-                              <label class="form-label mb-1">${category.category_name}</label>
-                          </div>
-                          <div class="col-md-4">
-                              <div class="progress" style="height: 20px;">
-                                  <div class="progress-bar ${getRatingColor(category.avg_rating)}" 
-                                      role="progressbar" 
-                                      style="width: ${ratingPercent}%"
-                                      aria-valuenow="${category.avg_rating}" 
-                                      aria-valuemin="1" 
-                                      aria-valuemax="5">
-                                      ${category.avg_rating}/5
-                                  </div>
-                              </div>
-                          </div>
-                          <div class="col-md-2">
-                              <small class="text-muted">${category.questions_rated} questions</small>
-                          </div>
-                      </div>
-                  `;
-              });
-              
-              // Calculate overall average for the period
-              const overallAvg = period.categories.reduce((sum, cat) => sum + cat.avg_rating, 0) / period.categories.length;
-              const overallPercent = (overallAvg / 5) * 100;
-              
-              periodDiv.innerHTML = `
-                  <div class="d-flex justify-content-between align-items-center mb-3">
-                      <h6 class="mb-0 fw-bold">${period.period_name}</h6>
-                      <span class="badge bg-primary">${period.quarter} ${period.year}</span>
-                  </div>
-                  ${categoriesHtml}
-                  <div class="row align-items-center mt-3 pt-3 border-top">
-                      <div class="col-md-6">
-                          <label class="form-label mb-1 fw-bold">Overall Average</label>
-                      </div>
-                      <div class="col-md-4">
-                          <div class="progress" style="height: 25px;">
-                              <div class="progress-bar ${getRatingColor(overallAvg)} fw-bold" 
-                                  role="progressbar" 
-                                  style="width: ${overallPercent}%"
-                                  aria-valuenow="${overallAvg.toFixed(2)}" 
-                                  aria-valuemin="1" 
-                                  aria-valuemax="5">
-                                  ${overallAvg.toFixed(2)}/5
-                              </div>
-                          </div>
-                      </div>
-                      <div class="col-md-2">
-                          <small class="text-muted">${period.categories.length} categories</small>
-                      </div>
-                  </div>
-              `;
-              
-              performanceSection.appendChild(periodDiv);
-          });
-      } else {
-          performanceSection.innerHTML = `
-              <div class="border border-secondary rounded p-3 mb-3">
-                  <div class="text-center text-muted">
-                      <i class="fa-solid fa-chart-line fa-2x mb-2"></i>
-                      <p class="mb-0">No performance reviews available</p>
-                  </div>
-              </div>
-          `;
-      }
-  }
-
-  // Helper function to determine rating color
-  function getRatingColor(rating) {
-      if (rating >= 4) return 'bg-success';
-      if (rating >= 3) return 'bg-info';
-      if (rating >= 2) return 'bg-warning';
-      return 'bg-danger';
-  }
-
-  });
-  </script>
+<script src="scripts/emploPage.js"></script>
 </body>
 </html>

@@ -16,7 +16,7 @@ redirectToLogin('HR');
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Company Name - HR Recruitment</title>
   <link href="../../bootstrap/css/bootstrap.min.css" rel="stylesheet">
-  <link href="../../css/employeeGlobal.css" rel="stylesheet">
+  <link href="../../css/Global.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>

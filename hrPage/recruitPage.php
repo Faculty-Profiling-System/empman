@@ -4,7 +4,6 @@ require "../functions.php";
 require "../connection.php";
 redirectToLogin('HR');
 
-// Handle POST requests for recruitment posts
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
   //Para sa editing ng hiring requests
@@ -34,11 +33,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['postRecruit'])) {
         $job_title = mysqli_real_escape_string($con, $_POST['jobTitle']);
         $position_id = mysqli_real_escape_string($con, $_POST['position_id']);
+        $min_salary = mysqli_real_escape_string($con, $_POST['minSalary']);
+        $max_salary = mysqli_real_escape_string($con, $_POST['maxSalary']);
         $description = mysqli_real_escape_string($con, $_POST['jobDescription']);
         $requirements = mysqli_real_escape_string($con, $_POST['requirements']);
         
-        $insert_query = "INSERT INTO recruitment_posts (job_title, position_id, description, requirements, post_date) 
-                        VALUES ('$job_title', '$position_id', '$description', '$requirements', NOW())";
+        $insert_query = "INSERT INTO recruitment_posts (job_title, position_id, min_salary, max_salary, description, requirements, post_date) 
+                        VALUES ('$job_title', '$position_id', '$min_salary', '$max_salary', '$description', '$requirements', NOW())";
 
         mysqli_begin_transaction($con);
         if (mysqli_query($con, $insert_query)) {
@@ -55,17 +56,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         exit();
     }
     
-    // Edit recruitment post
+    // Edit recruitment post - FIXED: Added salary handling
     if (isset($_POST['editRecruit'])) {
         $post_id = mysqli_real_escape_string($con, $_POST['editPostId']);
         $job_title = mysqli_real_escape_string($con, $_POST['jobTitle']);
         $position_id = mysqli_real_escape_string($con, $_POST['position_id']);
+        $min_salary = mysqli_real_escape_string($con, $_POST['minSalary']);
+        $max_salary = mysqli_real_escape_string($con, $_POST['maxSalary']);
         $description = mysqli_real_escape_string($con, $_POST['jobDescription']);
         $requirements = mysqli_real_escape_string($con, $_POST['requirements']);
         
         $update_query = "UPDATE recruitment_posts 
                         SET job_title = '$job_title', 
                             position_id = '$position_id', 
+                            min_salary = '$min_salary',
+                            max_salary = '$max_salary',
                             description = '$description', 
                             requirements = '$requirements'
                         WHERE post_id = '$post_id'";
@@ -106,84 +111,84 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if (isset($_POST['submitEditCandidate'])) {
-    $application_id = mysqli_real_escape_string($con, $_POST['application_id']);
-    $candidate_id = mysqli_real_escape_string($con, $_POST['candidate_id']);
-    $position_id = mysqli_real_escape_string($con, $_POST['position_id']);
-    $status = mysqli_real_escape_string($con, $_POST['status']);
-    
-    // Handle interview date - only set if status requires it
-    $interview_date_value = "NULL";
-    if (($status == 'Initial Interview' || $status == 'Final Interview') && !empty($_POST['interview_date'])) {
-        $interview_date = mysqli_real_escape_string($con, $_POST['interview_date']);
-        $interview_date_value = "'$interview_date'";
-    }
-    
-    // Handle rank properly for NULL values
-    $rank_value = empty($_POST['rank']) ? "NULL" : "'" . mysqli_real_escape_string($con, $_POST['rank']) . "'";
-    $comments_value = empty($_POST['comments']) ? "NULL" : "'" . mysqli_real_escape_string($con, $_POST['comments']) . "'";
-    
-    mysqli_begin_transaction($con);
-    
-    try {
-        // Update the application status
-        $update_candidate_query = "UPDATE applications SET status = '$status', interview_date = $interview_date_value, rank = $rank_value, 
-                                  hr_comment = $comments_value 
-                                  WHERE application_id = '$application_id'";
-        
-        if (!mysqli_query($con, $update_candidate_query)) {
-            throw new Exception("Error updating candidate application: " . mysqli_error($con));
-        }
-        
-        if ($status == 'Hired') {
-            $check_employee_query = "SELECT * FROM employees WHERE candidate_id = '$candidate_id'";
-            $check_result = mysqli_query($con, $check_employee_query);
-            
-            if (mysqli_num_rows($check_result) == 0) {
-                // GEGENERATE NG EMPLOYEE ID
-                $current_year = date('y'); // Gets last 2 digits of current year
-                $employee_id = $current_year . '-' . $candidate_id;
-                //TO MAGIGING DEFAULT PASSWORD NI EMPLOYEE
-                $default_password = password_hash($employee_id, PASSWORD_BCRYPT);
-                
-                // DITO MAG CREATE NG USER ACCOUNT
-                $create_user_query = "INSERT INTO user_accounts (login_identifier, password, user_type, login_attempts) 
-                                     VALUES ('$employee_id', '$default_password', 'Employee', 0)";
-                
-                if (!mysqli_query($con, $create_user_query)) {
-                    throw new Exception("Error creating user account: " . mysqli_error($con));
-                }
-                
-                // Get the newly created account_id
-                $account_id = mysqli_insert_id($con);
-                
-                // Then, create employee record
-                $current_date = date('Y-m-d');
-                $create_employee_query = "INSERT INTO employees (employee_id, account_id, candidate_id, application_id, date_hired, employment_status, status) 
-                                         VALUES ('$employee_id', '$account_id', '$candidate_id', '$application_id', '$current_date', 'Probationary', 'Active')";
-                
-                if (!mysqli_query($con, $create_employee_query)) {
-                    throw new Exception("Error creating employee record: " . mysqli_error($con));
-                }
-                
-                $_SESSION['message'] = "Candidate application updated successfully and employee account created! Employee ID: " . $employee_id;
-            } else {
-                $_SESSION['message'] = "Candidate application updated successfully! (Employee account already exists)";
-            }
-        } else {
-            $_SESSION['message'] = "Candidate application updated successfully!";
-        }
-        
-        mysqli_commit($con);
-        $_SESSION['message_type'] = "success";
-        
-    } catch (Exception $e) {
-        mysqli_rollback($con);
-        $_SESSION['message'] = $e->getMessage();
-        $_SESSION['message_type'] = "error";
-    }
-    
-    header("Location: " . $_SERVER['PHP_SELF']);
-    exit();
+      $application_id = mysqli_real_escape_string($con, $_POST['application_id']);
+      $candidate_id = mysqli_real_escape_string($con, $_POST['candidate_id']);
+      $position_id = mysqli_real_escape_string($con, $_POST['position_id']);
+      $status = mysqli_real_escape_string($con, $_POST['status']);
+      
+      // Handle interview date - only set if status requires it
+      $interview_date_value = "NULL";
+      if (($status == 'Initial Interview' || $status == 'Final Interview') && !empty($_POST['interview_date'])) {
+          $interview_date = mysqli_real_escape_string($con, $_POST['interview_date']);
+          $interview_date_value = "'$interview_date'";
+      }
+      
+      // Handle rank properly for NULL values
+      $rank_value = empty($_POST['rank']) ? "NULL" : "'" . mysqli_real_escape_string($con, $_POST['rank']) . "'";
+      $comments_value = empty($_POST['comments']) ? "NULL" : "'" . mysqli_real_escape_string($con, $_POST['comments']) . "'";
+      
+      mysqli_begin_transaction($con);
+      
+      try {
+          // Update the application status
+          $update_candidate_query = "UPDATE applications SET status = '$status', interview_date = $interview_date_value, rank = $rank_value, 
+                                    hr_comment = $comments_value 
+                                    WHERE application_id = '$application_id'";
+          
+          if (!mysqli_query($con, $update_candidate_query)) {
+              throw new Exception("Error updating candidate application: " . mysqli_error($con));
+          }
+          
+          if ($status == 'Hired') {
+              $check_employee_query = "SELECT * FROM employees WHERE candidate_id = '$candidate_id'";
+              $check_result = mysqli_query($con, $check_employee_query);
+              
+              if (mysqli_num_rows($check_result) == 0) {
+                  // GEGENERATE NG EMPLOYEE ID
+                  $current_year = date('y'); // Gets last 2 digits of current year
+                  $employee_id = $current_year . '-' . $candidate_id;
+                  //TO MAGIGING DEFAULT PASSWORD NI EMPLOYEE
+                  $default_password = password_hash($employee_id, PASSWORD_BCRYPT);
+                  
+                  // DITO MAG CREATE NG USER ACCOUNT
+                  $create_user_query = "INSERT INTO user_accounts (login_identifier, password, user_type, login_attempts) 
+                                      VALUES ('$employee_id', '$default_password', 'Employee', 0)";
+                  
+                  if (!mysqli_query($con, $create_user_query)) {
+                      throw new Exception("Error creating user account: " . mysqli_error($con));
+                  }
+                  
+                  // Get the newly created account_id
+                  $account_id = mysqli_insert_id($con);
+                  
+                  // Then, create employee record
+                  $current_date = date('Y-m-d');
+                  $create_employee_query = "INSERT INTO employees (employee_id, account_id, candidate_id, application_id, date_hired, employment_status, status) 
+                                          VALUES ('$employee_id', '$account_id', '$candidate_id', '$application_id', '$current_date', 'Probationary', 'Active')";
+                  
+                  if (!mysqli_query($con, $create_employee_query)) {
+                      throw new Exception("Error creating employee record: " . mysqli_error($con));
+                  }
+                  
+                  $_SESSION['message'] = "Candidate application updated successfully and employee account created! Employee ID: " . $employee_id;
+              } else {
+                  $_SESSION['message'] = "Candidate application updated successfully! (Employee account already exists)";
+              }
+          } else {
+              $_SESSION['message'] = "Candidate application updated successfully!";
+          }
+          
+          mysqli_commit($con);
+          $_SESSION['message_type'] = "success";
+          
+      } catch (Exception $e) {
+          mysqli_rollback($con);
+          $_SESSION['message'] = $e->getMessage();
+          $_SESSION['message_type'] = "error";
+      }
+      
+      header("Location: " . $_SERVER['PHP_SELF']);
+      exit();
   }
 }
 
@@ -212,6 +217,9 @@ $postRecruitmentQuery = "SELECT
                     p.position_id,
                     p.position_name AS 'Position',
                     d.department_name AS 'Department',
+                    rp.min_salary,
+                    rp.max_salary,
+                    CONCAT(rp.min_salary, ' - ', rp.max_salary) AS 'Salary',
                     rp.description AS 'Job Description',
                     rp.requirements AS 'Requirements',
                     rp.post_date AS 'Date Posted'
@@ -235,6 +243,7 @@ $candidatesQuery = "SELECT
                 INNER JOIN positions p ON a.position_id = p.position_id
                 ORDER BY a.date_applied DESC";
 $candidates = mysqli_query($con, $candidatesQuery);
+
 ?>
 
 
@@ -253,7 +262,7 @@ $candidates = mysqli_query($con, $candidatesQuery);
     <div class="row flex-nowrap">
 
       <!-- Sidebar -->
-            <?php include 'nav.php' ?>
+      <?php include 'nav.php' ?>
 
 
       <!-- Main Content -->
@@ -349,10 +358,8 @@ $candidates = mysqli_query($con, $candidatesQuery);
                 <thead class="table-light">
                   <tr>
                     <th>Job Title</th>
-                    <th>Position</th>
                     <th>Department</th>
-                    <th>Job Description</th>
-                    <th>Requirements</th>
+                    <th>Salary</th>
                     <th>Date Posted</th>
                     <th>Action</th>
                   </tr>
@@ -365,19 +372,22 @@ $candidates = mysqli_query($con, $candidatesQuery);
                   ?>
                     <tr>
                       <td><?php echo $postRow['Job Title']; ?></td>
-                      <td><?php echo $postRow['Position']; ?></td>
+                      <td style="display: none;"><?php echo $postRow['Position']; ?></td>
                       <td><?php echo $postRow['Department']; ?></td>
-                      <td><?php echo $postRow['Job Description']; ?></td>
-                      <td><?php echo $postRow['Requirements']; ?></td>
+                      <td><?php echo $postRow['Salary']; ?></td>
+                      <td style="display: none;"><?php echo $postRow['Job Description']; ?></td>
+                      <td style="display: none;"><?php echo $postRow['Requirements']; ?></td>
                       <td><?php echo $formattedDate; ?></td>
                       <td>
                         <button onclick="showEditRecruitModal(
                           <?php echo $postRow['post_id']; ?>,
                           '<?php echo htmlspecialchars($postRow['Job Title'], ENT_QUOTES); ?>',
                           '<?php echo $postRow['position_id']; ?>',
+                          '<?php echo $postRow['min_salary']; ?>',
+                          '<?php echo $postRow['max_salary']; ?>',
                           `<?php echo htmlspecialchars($postRow['Job Description'], ENT_QUOTES); ?>`,
                           `<?php echo htmlspecialchars($postRow['Requirements'], ENT_QUOTES); ?>`
-                        )" class="btn btn-outline-primary btn-sm">Edit</button>
+                        )" class="btn btn-outline-primary btn-sm">Edit/View</button>
 
                         <button onclick="showDeleteRecruitModal(<?php echo $postRow['post_id']; ?>)" class="btn btn-outline-danger btn-sm">Delete</button>
                       </td>
@@ -390,7 +400,7 @@ $candidates = mysqli_query($con, $candidatesQuery);
         </div>
         <br>
 
-        <!-- Recruitment Table Card -->
+        <!-- Candidate Table Card -->
         <div class="card shadow-sm">
           <div class="card-header bg-primary text-white d-flex align-items-center">
             <i class="fas fa-user-plus me-2"></i>
@@ -411,28 +421,88 @@ $candidates = mysqli_query($con, $candidatesQuery);
                 </thead>
                 <tbody>
                   <?php
-                  while( $candidateRow = mysqli_fetch_assoc($candidates)) {
+                  while($candidateRow = mysqli_fetch_assoc(result: $candidates)) {
+                    $candidateId = $candidateRow['candidate_id'];
+                    // Personal info
+                    $personalInfoQuery = "SELECT * FROM candidates WHERE candidate_id = $candidateId";
+                    $personalInfoResult = mysqli_query($con, $personalInfoQuery);
+                    $personalInfo = mysqli_fetch_assoc($personalInfoResult);
+                    
+                    // Educational background info
+                    $educBgQuery = "SELECT * FROM educational_background WHERE candidate_id = $candidateId";
+                    $educBgResult = mysqli_query($con, $educBgQuery);
+                    $educBgInfo = [];
+                    while($row = mysqli_fetch_assoc($educBgResult)) {
+                        $educBgInfo[] = $row;
+                    }
+                    
+                    // Work experience info
+                    $workExperienceQuery = "SELECT * FROM work_experience WHERE candidate_id = $candidateId";
+                    $workExperienceResult = mysqli_query($con, $workExperienceQuery);
+                    $workExperienceInfo = [];
+                    while($row = mysqli_fetch_assoc($workExperienceResult)) {
+                        $workExperienceInfo[] = $row;
+                    }
+                    
+                    // Skills                     
+                    $skillsQuery = "SELECT * FROM skills WHERE candidate_id = $candidateId";
+                    $skillsResult = mysqli_query($con, $skillsQuery);
+                    $skillsInfo = [];
+                    while($row = mysqli_fetch_assoc($skillsResult)) {
+                        $skillsInfo[] = $row;
+                    }
+                    
+                    // Certification info
+                    $certificationQuery = "SELECT * FROM certifications WHERE candidate_id = $candidateId";
+                    $certificationResult = mysqli_query($con, $certificationQuery);
+                    $certificationInfo = [];
+                    while($row = mysqli_fetch_assoc($certificationResult)) {
+                        $certificationInfo[] = $row;
+                    }
+                    
+                    // Documents info
+                    $documentsQuery = "SELECT * FROM documents WHERE candidate_id = $candidateId";
+                    $documentsResult = mysqli_query($con, $documentsQuery);
+                    $documentsInfo = [];
+                    while($row = mysqli_fetch_assoc($documentsResult)) {
+                        $documentsInfo[] = $row;
+                    }
+                    
+                    // Convert arrays to JSON for JavaScript
+                    $educBgJson = htmlspecialchars(json_encode($educBgInfo), ENT_QUOTES, 'UTF-8');
+                    $workExpJson = htmlspecialchars(json_encode($workExperienceInfo), ENT_QUOTES, 'UTF-8');
+                    $skillsJson = htmlspecialchars(json_encode($skillsInfo), ENT_QUOTES, 'UTF-8');
+                    $certsJson = htmlspecialchars(json_encode($certificationInfo), ENT_QUOTES, 'UTF-8');
+                    $docsJson = htmlspecialchars(json_encode($documentsInfo), ENT_QUOTES, 'UTF-8');
                     ?>
                     <tr>
-                      <td><?php echo $candidateRow['Candidate Name'] ; ?></td>
-                      <td><?php echo $candidateRow['Position'] ; ?></td>
-                      <td><?php echo $candidateRow['Status'] ; ?></td>
-                      <td><?php echo $candidateRow['Date of Interview'] ; ?></td>
-                      <td><?php echo $candidateRow['Rank'] ; ?></td>
+                      <td><?php echo $candidateRow['Candidate Name']; ?></td>
+                      <td><?php echo $candidateRow['Position']; ?></td>
+                      <td><?php echo $candidateRow['Status']; ?></td>
+                      <td><?php echo $candidateRow['Date of Interview']; ?></td>
+                      <td><?php echo $candidateRow['Rank']; ?></td>
                       <td>
-                          <button class="btn btn-outline-primary btn-sm" onclick="showEditCandidateModal(
-                              <?php echo $candidateRow['application_id']; ?>,
-                              <?php echo $candidateRow['candidate_id']; ?>,
-                              <?php echo $candidateRow['position_id']; ?>,
-                              '<?php echo $candidateRow['Status']; ?>',
-                              '<?php echo $candidateRow['Date of Interview']; ?>',
-                              '<?php echo $candidateRow['Rank']; ?>',
-                              `<?php echo htmlspecialchars($candidateRow['Comments'] ?? '', ENT_QUOTES); ?>`
-                          )">Edit</button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="showEditCandidateModal(
+                          <?php echo $candidateRow['application_id']; ?>,
+                          <?php echo $candidateRow['candidate_id']; ?>,
+                          <?php echo $candidateRow['position_id']; ?>,
+                          '<?php echo $candidateRow['Status']; ?>',
+                          '<?php echo $candidateRow['Date of Interview']; ?>',
+                          '<?php echo $candidateRow['Rank']; ?>',
+                          `<?php echo htmlspecialchars($candidateRow['Comments'] ?? '', ENT_QUOTES); ?>`
+                        )">Edit</button>
+
+                        <button class="btn btn-outline-primary btn-sm" onclick="showViewCandidateInfo(
+                          `<?php echo htmlspecialchars(json_encode($personalInfo), ENT_QUOTES, 'UTF-8'); ?>`,
+                          `<?php echo $educBgJson; ?>`,
+                          `<?php echo $workExpJson; ?>`,
+                          `<?php echo $skillsJson; ?>`,
+                          `<?php echo $certsJson; ?>`,
+                          `<?php echo $docsJson; ?>`
+                        )">View</button>
                       </td>
                     </tr>
                     <?php
-
                   }
                   ?>
                 </tbody>
@@ -447,7 +517,7 @@ $candidates = mysqli_query($con, $candidatesQuery);
   <!-- MODAL PARA MAEDIT YUNG CANDIDATES -->
   <div class="modal fade" id="editCandidateModal" tabindex="-1" aria-labelledby="editCandidateLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content bg-dark text-white"> <!-- Matches your dark theme -->
+      <div class="modal-content bg-dark text-white">
         <form action="recruitPage.php" method="post">
           <div class="modal-header">
             <h5 class="modal-title" id="editCandidateLabel">Edit Candidate Application</h5>
@@ -500,6 +570,72 @@ $candidates = mysqli_query($con, $candidatesQuery);
         </form>
       </div>
     </div>
+  </div>
+
+  <!-- MODAL PARA SA VIEWING OF CANDIDATES DOCUMENTS, WORK EXPERIENCES, SKILLS, CERTIFICATIONS, AND EDUCATIONAL BACKGROUND -->
+  <div class="modal fade" id="viewCandidateInfoModal" tabindex="-1" aria-labelledby="viewCandidateInfoLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-xl">
+          <div class="modal-content bg-dark text-white">
+              <div class="modal-header">
+                  <h5 class="modal-title" id="viewCandidateInfoLabel">Candidate Information</h5>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                  
+                  <!-- Personal Information -->
+                  <div class="mb-4">
+                      <h6 class="border-bottom pb-2 mb-3">PERSONAL INFORMATION</h6>
+                      <div id="personalInfoSection" class="ps-3">
+                          <!-- Personal Information will be loaded here via JavaScript -->
+                      </div>
+                  </div>
+
+                  <!-- Educational Background -->
+                  <div class="mb-4">
+                      <h6 class="border-bottom pb-2 mb-3">EDUCATIONAL BACKGROUND</h6>
+                      <div id="educationalBackgroundSection" class="ps-3">
+                          <!-- Educational Background will be loaded here via JavaScript -->
+                      </div>
+                  </div>
+
+                  <!-- Work Experience -->
+                  <div class="mb-4">
+                      <h6 class="border-bottom pb-2 mb-3">WORK EXPERIENCE</h6>
+                      <div id="workExperienceSection" class="ps-3">
+                          <!-- Work Experience will be loaded here via JavaScript -->
+                      </div>
+                  </div>
+
+                  <!-- Skills -->
+                  <div class="mb-4">
+                      <h6 class="border-bottom pb-2 mb-3">SKILLS</h6>
+                      <div id="skillsSection" class="ps-3">
+                          <!-- Skills will be loaded here via JavaScript -->
+                      </div>
+                  </div>
+
+                  <!-- Certifications -->
+                  <div class="mb-4">
+                      <h6 class="border-bottom pb-2 mb-3">CERTIFICATIONS</h6>
+                      <div id="certificationsSection" class="ps-3">
+                          <!-- Certifications will be loaded here via JavaScript -->
+                      </div>
+                  </div>
+
+                  <!-- Documents -->
+                  <div class="mb-4">
+                      <h6 class="border-bottom pb-2 mb-3">DOCUMENTS</h6>
+                      <div id="documentsSection" class="ps-3">
+                          <!-- Documents will be loaded here via JavaScript -->
+                      </div>
+                  </div>
+
+              </div>
+              <div class="modal-footer">
+                  <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+              </div>
+          </div>
+      </div>
   </div>
 
   <!-- MODAL PARA MAEDIT STATUS NG HIRING REQUESTS -->
@@ -563,9 +699,20 @@ $candidates = mysqli_query($con, $candidatesQuery);
                 while ($position = mysqli_fetch_assoc($positions_result)) {
                     echo "<option value='{$position['position_id']}'>{$position['position_name']}</option>";
                 }
-                mysqli_data_seek($positions_result, 0); // Reset pointer for future use
+                mysqli_data_seek($positions_result, 0); 
                 ?>
               </select>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="minSalary" class="form-label fw-semibold">Minimum Salary (₱)</label>
+                <input type="text" name="minSalary" id="minSalary" class="form-control" placeholder="e.g., 30,000" required>
+              </div>
+              <div class="col-md-6">
+                <label for="maxSalary" class="form-label fw-semibold">Maximum Salary (₱)</label>
+                <input type="text" name="maxSalary" id="maxSalary" class="form-control" placeholder="e.g., 50,000" required>
+              </div>
             </div>
 
             <!-- Job Description -->
@@ -624,6 +771,18 @@ $candidates = mysqli_query($con, $candidatesQuery);
               </select>
             </div>
 
+            <!-- Salary Range - ADDED: Salary fields -->
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="editMinSalary" class="form-label fw-semibold">Minimum Salary (₱)</label>
+                <input type="text" name="minSalary" id="editMinSalary" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label for="editMaxSalary" class="form-label fw-semibold">Maximum Salary (₱)</label>
+                <input type="text" name="maxSalary" id="editMaxSalary" class="form-control" required>
+              </div>
+            </div>
+
             <!-- Job Description -->
             <div class="mb-3">
               <label for="editJobDescription" class="form-label fw-semibold">Job Description</label>
@@ -672,101 +831,6 @@ $candidates = mysqli_query($con, $candidatesQuery);
 
   <script src="../bootstrap/js/bootstrap.bundle.min.js"></script>
 
-  <script>
-      const postRecruitModal = new bootstrap.Modal(document.getElementById('postRecruitModal'));
-      const editRecruitModal = new bootstrap.Modal(document.getElementById('editRecruitModal'));
-      const deleteRecruitModal = new bootstrap.Modal(document.getElementById('deleteRecruitModal'));
-      const hireRequestModal = new bootstrap.Modal(document.getElementById('hireRequestModal'));
-      const editCandidateModal = new bootstrap.Modal(document.getElementById('editCandidateModal'));
-
-      function showEditCandidateModal(applicationId, candidateId, positionId, currentStatus, currentInterviewDate, currentRank, currentComments) {
-        document.getElementById('application_id').value = applicationId;
-        document.getElementById('candidate_id').value = candidateId;
-        document.getElementById('position_id').value = positionId;
-        
-        // Pre-fill existing data if available
-        document.getElementById('status').value = currentStatus || '';
-        
-        // Format interview date for datetime-local input
-        if (currentInterviewDate && currentInterviewDate !== '0000-00-00 00:00:00') {
-            const interviewDate = new Date(currentInterviewDate);
-            const formattedDate = interviewDate.toISOString().slice(0, 16);
-            document.getElementById('interview_date').value = formattedDate;
-        } else {
-            document.getElementById('interview_date').value = '';
-        }
-        
-        document.getElementById('rank').value = currentRank || '';
-        document.getElementById('comments').value = currentComments || '';
-        
-        // Show/hide interview date field based on current status
-        toggleInterviewDateField();
-        
-        editCandidateModal.show();
-    }
-      
-      function closeEditCandidateModal() {
-          editCandidateModal.hide();
-      }
-
-      function toggleInterviewDateField() {
-          const status = document.getElementById('status').value;
-          const interviewDateField = document.getElementById('interviewDateField');
-          const interviewDateInput = document.getElementById('interview_date');
-          
-          if (status === 'Initial Interview' || status === 'Final Interview') {
-              interviewDateField.style.display = 'block';
-              interviewDateInput.setAttribute('required', 'required');
-              
-              // Set minimum date to today
-              const today = new Date();
-              const minDate = today.toISOString().slice(0, 16);
-              interviewDateInput.min = minDate;
-          } else {
-              interviewDateField.style.display = 'none';
-              interviewDateInput.removeAttribute('required');
-              interviewDateInput.value = '';
-          }
-      }
-
-      function showHireRequestModal(requestID) {
-          document.getElementById('request_id').value = requestID;
-          hireRequestModal.show();
-      }
-      
-      function closeHireRequestModal() {
-          hireRequestModal.hide();
-      }
-
-      function showPostRecruitModal() {
-          postRecruitModal.show();
-      }
-      
-      function closePostRecruitModal() {
-          postRecruitModal.hide();
-      }
-
-      function showEditRecruitModal(postId, jobTitle, positionId, description, requirements) {
-          document.getElementById('editPostId').value = postId;
-          document.getElementById('editJobTitle').value = jobTitle;
-          document.getElementById('editPositionSelect').value = positionId;
-          document.getElementById('editJobDescription').value = description;
-          document.getElementById('editRequirements').value = requirements;
-          editRecruitModal.show();
-      }
-      
-      function closeEditRecruitModal() {
-          editRecruitModal.hide();
-      }
-      
-      function showDeleteRecruitModal(postId) {
-          document.getElementById('deletePostId').value = postId;
-          deleteRecruitModal.show();
-      }
-      
-      function closeDeleteRecruitModal() {
-          deleteRecruitModal.hide();
-      }
-  </script>
+  <script src="scripts/recruitPage.js"></script>
 </body>
 </html>

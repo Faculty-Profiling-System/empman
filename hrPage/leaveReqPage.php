@@ -39,6 +39,45 @@ while ($dept = mysqli_fetch_assoc($departmentsResult)) {
 $declineErr = null;
 $approveErr = null;
 $successMsg = null;
+
+// Handle file viewing for HR
+if (isset($_GET['view_proof'])) {
+    $leaveId = mysqli_real_escape_string($con, $_GET['view_proof']);
+    
+    // Get the proof from leave_requests table
+    $query = "SELECT lr.proof 
+              FROM leave_requests lr
+              JOIN employee_leave_info eli ON lr.leave_id = eli.leave_id
+              WHERE lr.leave_id = '$leaveId'";
+    $result = mysqli_query($con, $query);
+    
+    if ($result && mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
+        if ($row['proof']) {
+            // Detect file type from the binary data
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $fileType = $finfo->buffer($row['proof']);
+            
+            // For images, display directly in browser
+            if (strpos($fileType, 'image/') === 0) {
+                header('Content-Type: ' . $fileType);
+                echo $row['proof'];
+                exit();
+            } 
+            // For PDFs, display in browser
+            else if ($fileType === 'application/pdf') {
+                header('Content-Type: application/pdf');
+                header('Content-Disposition: inline; filename="proof.pdf"');
+                echo $row['proof'];
+                exit();
+            }
+        }
+    }
+    // If no proof found, redirect back
+    header("Location: leaveReqPage.php?error=proof_not_found");
+    exit();
+}
+
 if(isset($_POST["declineSubmit"])){
     $leaveID = $_POST["leaveID"];
     $declineReason = mysqli_real_escape_string($con, $_POST["declineReason"]);
@@ -215,6 +254,15 @@ if(isset($_GET['success'])) {
                       $formattedStart = $startDate->format('M. d, Y');
                       $endDate = new DateTime($row['end_date']);
                       $formattedEnd = $endDate->format('M. d, Y');
+                      
+                      // Check if proof exists
+                      $proofQuery = "SELECT proof FROM leave_requests WHERE leave_id = '{$row['leave_id']}'";
+                      $proofResult = mysqli_query($con, $proofQuery);
+                      $hasProof = false;
+                      if ($proofResult && mysqli_num_rows($proofResult) > 0) {
+                          $proofData = mysqli_fetch_assoc($proofResult);
+                          $hasProof = !empty($proofData['proof']);
+                      }
                       ?>
                       <tr>
                         <td><?php echo htmlspecialchars($row['employee_name']); ?></td>
@@ -246,13 +294,15 @@ if(isset($_GET['success'])) {
                             data-start-date="<?php echo $formattedStart; ?>"
                             data-end-date="<?php echo $formattedEnd; ?>"
                             data-reason="<?php echo htmlspecialchars($row['reason']); ?>"
-                            data-status="<?php echo htmlspecialchars($row['leave_status']); ?>">View</button>
+                            data-status="<?php echo htmlspecialchars($row['leave_status']); ?>"
+                            data-proof-available="<?php echo $hasProof ? 'Yes' : 'No'; ?>"
+                            data-leave-id="<?php echo htmlspecialchars($row['leave_id']); ?>">View</button>
                         </td>
                       </tr>
                       <?php
                     }
                   } else {
-                    echo '<tr><td colspan="8" class="text-center">No pending leave requests found' . 
+                    echo '<tr><td colspan="9" class="text-center">No pending leave requests found' . 
                          ((!empty($departmentFilter) || !empty($employeeIdFilter)) ? ' matching the filter criteria' : '') . 
                          '.</td></tr>';
                   }
@@ -327,44 +377,70 @@ if(isset($_GET['success'])) {
 
   <!-- View Modal -->
   <div class="modal fade" id="viewModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
           <h5 class="modal-title"><i class="fa-solid fa-eye me-2"></i>Leave Request Details</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <label class="fw-bold">Employee Name:</label>
-            <p id="viewEmpName" class="mb-2"></p>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="fw-bold">Employee Name:</label>
+                <p id="viewEmpName" class="mb-2"></p>
+              </div>
+              <div class="mb-3">
+                <label class="fw-bold">Employee ID:</label>
+                <p id="viewEmpID" class="mb-2"></p>
+              </div>
+              <div class="mb-3">
+                <label class="fw-bold">Department:</label>
+                <p id="viewDepartment" class="mb-2"></p>
+              </div>
+              <div class="mb-3">
+                <label class="fw-bold">Position:</label>
+                <p id="viewPosition" class="mb-2"></p>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="fw-bold">Leave Type:</label>
+                <p id="viewLeaveType" class="mb-2"></p>
+              </div>
+              <div class="mb-3">
+                <label class="fw-bold">Date of Leave:</label>
+                <p id="viewDate" class="mb-2"></p>
+              </div>
+              <div class="mb-3">
+                <label class="fw-bold">Status:</label>
+                <p id="viewStatus" class="mb-2"></p>
+              </div>
+              <div class="mb-3">
+                <label class="fw-bold">Proof Available:</label>
+                <p id="viewProof" class="mb-2"></p>
+              </div>
+            </div>
           </div>
-          <div class="mb-3">
-            <label class="fw-bold">Employee ID:</label>
-            <p id="viewEmpID" class="mb-2"></p>
+          <div class="row">
+            <div class="col-12">
+              <div class="mb-3">
+                <label class="fw-bold">Reason:</label>
+                <div class="border rounded p-3">
+                  <p id="viewReason" class="mb-0"></p>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="mb-3">
-            <label class="fw-bold">Department:</label>
-            <p id="viewDepartment" class="mb-2"></p>
-          </div>
-          <div class="mb-3">
-            <label class="fw-bold">Position:</label>
-            <p id="viewPosition" class="mb-2"></p>
-          </div>
-          <div class="mb-3">
-            <label class="fw-bold">Leave Type:</label>
-            <p id="viewLeaveType" class="mb-2"></p>
-          </div>
-          <div class="mb-3">
-            <label class="fw-bold">Date of Leave:</label>
-            <p id="viewDate" class="mb-2"></p>
-          </div>
-          <div class="mb-3">
-            <label class="fw-bold">Reason:</label>
-            <p id="viewReason" class="mb-2"></p>
-          </div>
-          <div class="mb-3">
-            <label class="fw-bold">Status:</label>
-            <p id="viewStatus" class="mb-2"></p>
+          <div class="row">
+            <div class="col-12">
+              <div class="mb-3">
+                <label class="fw-bold">Proof Document:</label>
+                <div id="proofContainer" class="border rounded p-3 text-center">
+                  <!-- Proof content will be loaded here -->
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -420,6 +496,8 @@ if(isset($_GET['success'])) {
       const viewDate = document.getElementById('viewDate');
       const viewReason = document.getElementById('viewReason');
       const viewStatus = document.getElementById('viewStatus');
+      const viewProof = document.getElementById('viewProof');
+      const proofContainer = document.getElementById('proofContainer');
 
       viewButtons.forEach(btn => {
         btn.addEventListener('click', function () {
@@ -431,6 +509,23 @@ if(isset($_GET['success'])) {
           viewDate.textContent = this.dataset.startDate + ' - ' + this.dataset.endDate;
           viewReason.textContent = this.dataset.reason;
           viewStatus.textContent = this.dataset.status;
+          viewProof.textContent = this.dataset.proofAvailable;
+
+          // Handle proof display
+          const leaveID = this.dataset.leaveId;
+          const proofAvailable = this.dataset.proofAvailable;
+          
+          if (proofAvailable === 'Yes') {
+            proofContainer.innerHTML = `
+              <div class="mb-3">
+                <a href="leaveReqPage.php?view_proof=${leaveID}" class="btn btn-primary" target="_blank">
+                  <i class="fas fa-external-link-alt me-1"></i>View Proof Document
+                </a>
+              </div>
+            `;
+          } else {
+            proofContainer.innerHTML = '<p><i class="fas fa-times-circle me-1"></i>No proof document uploaded.</p>';
+          }
         });
       });
 

@@ -6,10 +6,10 @@ redirectToLogin('Manager');
 
 $currentEmployeeID = $_SESSION['employeeID'];
 
+// Query para malaman anong department ng manager
 $managerDeptQuery = "SELECT p.department_id 
                      FROM employees e
-                     JOIN applications a ON e.application_id = a.application_id
-                     JOIN positions p ON a.position_id = p.position_id
+                     JOIN positions p ON e.position_id = p.position_id
                      WHERE e.employee_id = '$currentEmployeeID'";
 $managerDeptResult = mysqli_query($con, $managerDeptQuery);
 
@@ -18,12 +18,54 @@ if ($managerDeptResult && mysqli_num_rows($managerDeptResult) > 0) {
     $managerDeptId = $managerDept['department_id'];
 }
 
-$employeeLeavesQuery = "SELECT * FROM employee_leave_info where employee_id != '$currentEmployeeID' and leave_status = 'Pending' and department_id = '$managerDeptId' ";
+// manipulating the records to be displayed sa leave request table
+$employeeLeavesQuery = "SELECT * FROM employee_leave_info 
+                       WHERE employee_id != '$currentEmployeeID' 
+                       AND leave_status = 'Pending' 
+                       AND department_id = '$managerDeptId'";
 $leaveResult = mysqli_query($con, $employeeLeavesQuery);
 
 $declineErr = null;
 $approveErr = null;
 $successMsg = null;
+
+// Handle file viewing for manager
+if (isset($_GET['view_proof'])) {
+    $leaveId = mysqli_real_escape_string($con, $_GET['view_proof']);
+    
+    // Get the proof from leave_requests table
+    $query = "SELECT lr.proof 
+              FROM leave_requests lr
+              JOIN employee_leave_info eli ON lr.leave_id = eli.leave_id
+              WHERE lr.leave_id = '$leaveId' AND eli.department_id = '$managerDeptId'";
+    $result = mysqli_query($con, $query);
+    
+    if ($result && mysqli_num_rows($result) > 0) {
+        $row = mysqli_fetch_assoc($result);
+        if ($row['proof']) {
+            // Detect file type from the binary data
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+            $fileType = $finfo->buffer($row['proof']);
+            
+            // For images, display directly in browser
+            if (strpos($fileType, 'image/') === 0) {
+                header('Content-Type: ' . $fileType);
+                echo $row['proof'];
+                exit();
+            } 
+            // For PDFs, display in browser
+            else if ($fileType === 'application/pdf') {
+                header('Content-Type: application/pdf');
+                header('Content-Disposition: inline; filename="proof.pdf"');
+                echo $row['proof'];
+                exit();
+            }
+        }
+    }
+    // If no proof found, redirect back
+    header("Location: leaveReqPage.php?error=proof_not_found");
+    exit();
+}
 
 if(isset($_POST["declineSubmit"])){
     $leaveID = $_POST["leaveID"];
@@ -131,6 +173,7 @@ if(isset($_GET['success'])) {
                     <th>Employee Name</th>
                     <th>ID</th>
                     <th>Position</th>
+                    <th>Department</th>
                     <th>Leave Type</th>
                     <th>Date of Leave</th>
                     <th>Status</th>
@@ -145,11 +188,21 @@ if(isset($_GET['success'])) {
                         $formattedStart = $startDate->format('M. d, Y');
                         $endDate = new DateTime($row['end_date']);
                         $formattedEnd = $endDate->format('M. d, Y');
+                        
+                        // Check if proof exists
+                        $proofQuery = "SELECT proof FROM leave_requests WHERE leave_id = '{$row['leave_id']}'";
+                        $proofResult = mysqli_query($con, $proofQuery);
+                        $hasProof = false;
+                        if ($proofResult && mysqli_num_rows($proofResult) > 0) {
+                            $proofData = mysqli_fetch_assoc($proofResult);
+                            $hasProof = !empty($proofData['proof']);
+                        }
                         ?>
                         <tr>
                           <td><?php echo $row['employee_name'] ;?></td>
                           <td><?php echo $row['employee_id'] ;?></td>
                           <td><?php echo $row['position_name'] ;?></td>
+                          <td><?php echo $row['department_name'] ;?></td>
                           <td><?php echo $row['leave_type'] ;?></td>
                           <td><?php echo $formattedStart . ' - ' . $formattedEnd ;?></td>
                           <td><span class="badge bg-warning"><?php echo $row['leave_status'] ;?></span></td>
@@ -161,11 +214,12 @@ if(isset($_GET['success'])) {
                           <td style="display: none;"><?php echo $row['reason'] ;?></td>
                           <td style="display: none;"><?php echo $row['status_reason'] ;?></td>
                           <td style="display: none;"><?php echo $row['leave_id']; ?></td>
+                          <td style="display: none;"><?php echo $hasProof ? 'Yes' : 'No'; ?></td>
                         </tr>
                         <?php
                       }
                     } else {
-                      echo '<tr><td colspan="7" class="text-center">No pending leave requests found.</td></tr>';
+                      echo '<tr><td colspan="9" class="text-center">No pending leave requests found.</td></tr>';
                     }
                     ?>
                 </tbody>
@@ -224,44 +278,78 @@ if(isset($_GET['success'])) {
 
         <!-- View Leave Modal -->
         <div class="modal fade" id="viewLeaveModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Leave Request Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
-                <label class="fw-bold">Employee Name:</label>
-                <p id="viewEmpName" class="mb-2"></p>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label class="fw-bold">Employee Name:</label>
+                      <p id="viewEmpName" class="mb-2"></p>
+                    </div>
+                    <div class="mb-3">
+                      <label class="fw-bold">Employee ID:</label>
+                      <p id="viewEmpID" class="mb-2"></p>
+                    </div>
+                    <div class="mb-3">
+                      <label class="fw-bold">Position:</label>
+                      <p id="viewPosition" class="mb-2"></p>
+                    </div>
+                    <div class="mb-3">
+                      <label class="fw-bold">Department:</label>
+                      <p id="viewDepartment" class="mb-2"></p>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="mb-3">
+                      <label class="fw-bold">Leave Type:</label>
+                      <p id="viewLeaveType" class="mb-2"></p>
+                    </div>
+                    <div class="mb-3">
+                      <label class="fw-bold">Date of Leave:</label>
+                      <p id="viewDate" class="mb-2"></p>
+                    </div>
+                    <div class="mb-3">
+                      <label class="fw-bold">Status:</label>
+                      <p id="viewStatus" class="mb-2"></p>
+                    </div>
+                    <div class="mb-3">
+                      <label class="fw-bold">Proof Uploaded:</label>
+                      <p id="viewProof" class="mb-2"></p>
+                    </div>
+                  </div>
                 </div>
-                <div class="mb-3">
-                <label class="fw-bold">Employee ID:</label>
-                <p id="viewEmpID" class="mb-2"></p>
+                <div class="row">
+                  <div class="col-12">
+                    <div class="mb-3">
+                      <label class="fw-bold">Leave Reason:</label>
+                      <div class="border rounded p-3">
+                        <p id="viewReason" class="mb-0"></p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="mb-3">
-                <label class="fw-bold">Position:</label>
-                <p id="viewPosition" class="mb-2"></p>
+                <div class="row">
+                  <div class="col-12">
+                    <div class="mb-3">
+                      <label class="fw-bold">Proof Document:</label>
+                      <div id="proofContainer" class="border rounded p-3 text-center">
+                        <!-- Proof content will be loaded here -->
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div class="mb-3">
-                <label class="fw-bold">Leave Type:</label>
-                <p id="viewLeaveType" class="mb-2"></p>
-                </div>
-                <div class="mb-3">
-                <label class="fw-bold">Leave Reason:</label>
-                <p id="viewReason" class="mb-2"></p>
-                </div>
-                <div class="mb-3">
-                <label class="fw-bold">Date of Leave:</label>
-                <p id="viewDate" class="mb-2"></p>
-                </div>
-                <div class="mb-3">
-                <label class="fw-bold">Status:</label>
-                <p id="viewStatus" class="mb-2"></p>
-                </div>
-                <div class="mb-3">
-                <label class="fw-bold">Notes / Comments:</label>
-                <p id="viewNotes" class="mb-2">No additional notes.</p>
+                <div class="row">
+                  <div class="col-12">
+                    <div class="mb-3">
+                      <label class="fw-bold">Notes / Comments:</label>
+                      <p id="viewNotes" class="mb-2">No additional notes.</p>
+                    </div>
+                  </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -288,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const row = btn.closest('tr');
             const empName = row.cells[0].textContent;
             const empID = row.cells[1].textContent;
-            const leaveID = row.cells[9].textContent;
+            const leaveID = row.cells[10].textContent; // Updated index (was 11, now 10)
 
             document.getElementById('approveEmpName').textContent = empName;
             document.getElementById('approveEmpID').textContent = empID;
@@ -309,7 +397,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const row = btn.closest('tr');
             const empName = row.cells[0].textContent;
             const empID = row.cells[1].textContent;
-            const leaveID = row.cells[9].textContent;
+            const leaveID = row.cells[10].textContent; // Updated index (was 11, now 10)
 
             document.getElementById('declineEmpName').textContent = empName;
             document.getElementById('declineEmpID').textContent = empID;
@@ -331,21 +419,40 @@ document.addEventListener('DOMContentLoaded', function() {
             const empName = row.cells[0].textContent;
             const empID = row.cells[1].textContent;
             const position = row.cells[2].textContent;
-            const leaveType = row.cells[3].textContent;
-            const date = row.cells[4].textContent;
-            const status = row.cells[5].textContent;
-            const reason = row.cells[7].textContent;
-            const comments = row.cells[8].textContent;
+            const department = row.cells[3].textContent;
+            const leaveType = row.cells[4].textContent;
+            const date = row.cells[5].textContent;
+            const status = row.cells[6].textContent; // Updated index (was 7, now 6)
+            const reason = row.cells[8].textContent; // Updated index (was 9, now 8)
+            const comments = row.cells[9].textContent; // Updated index (was 10, now 9)
+            const leaveID = row.cells[10].textContent; // Updated index (was 11, now 10)
+            const proofAvailable = row.cells[11].textContent; // Updated index (was 12, now 11)
 
             document.getElementById('viewEmpName').textContent = empName;
             document.getElementById('viewEmpID').textContent = empID;
             document.getElementById('viewPosition').textContent = position;
+            document.getElementById('viewDepartment').textContent = department;
             document.getElementById('viewLeaveType').textContent = leaveType;
             document.getElementById('viewReason').textContent = reason;
             document.getElementById('viewDate').textContent = date;
             document.getElementById('viewStatus').textContent = status;
+            document.getElementById('viewProof').textContent = proofAvailable;
 
             document.getElementById('viewNotes').textContent = comments ? comments : 'No Comments';
+
+            // Handle proof display
+            const proofContainer = document.getElementById('proofContainer');
+            if (proofAvailable === 'Yes') {
+                proofContainer.innerHTML = `
+                    <div class="mb-3">
+                        <a href="leaveReqPage.php?view_proof=${leaveID}" class="btn btn-primary" target="_blank">
+                            <i class="fas fa-external-link-alt me-1"></i>View Proof Document
+                        </a>
+                    </div>
+                `;
+            } else {
+                proofContainer.innerHTML = '<p><i class="fas fa-times-circle me-1"></i>No proof document uploaded.</p>';
+            }
 
             const viewModal = new bootstrap.Modal(document.getElementById('viewLeaveModal'));
             viewModal.show();
