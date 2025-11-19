@@ -62,8 +62,19 @@ if ($candidate_id) {
                     <div class="card shadow-sm h-100">
                         <div class="card-body">
                             <h5 class="card-title fw-bold"><?= htmlspecialchars($job['job_title']) ?></h5>
-                            <p class="card-text text-truncate"><?= htmlspecialchars($job['description']) ?></p>
+                            <p class="card-text" style="word-break: break-word; line-height: 1.5; text-align: justify;">
+                                <?= nl2br(htmlspecialchars($job['description'])) ?>
+                            </p>
                             <p class="mb-0"><strong>Salary:</strong> PHP <?= ($job['min_salary']) ?> - <?= ($job['max_salary']) ?></p>
+                            <?php $reqItems = array_filter(array_map('trim', explode('-', $job['requirements'])));
+                            if (!empty($reqItems)):?>
+                                <p class="mb-1"><strong>Requirements:</strong></p>
+                                <ul class="mb-0">
+                                    <?php foreach ($reqItems as $item): ?>
+                                        <li><?= htmlspecialchars($item) ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php endif; ?>
                         </div>
                         <div class="card-footer bg-transparent border-0">
                             <a 
