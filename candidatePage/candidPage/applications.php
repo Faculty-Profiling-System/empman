@@ -101,7 +101,7 @@ $result = $stmt->get_result();
                                                             <p><strong>Status:</strong> <span class="badge <?= getBadgeClass($row['status']) ?>"><?= htmlspecialchars($row['status']) ?></span></p>
                                                             <p><strong>Date Applied:</strong> <?= date('F j, Y', strtotime($row['date_applied'])) ?></p>
 
-                                                            <?php if (in_array($statusLower, ['initial interview', 'final interview', 'hired'])) :
+                                                            <?php if (in_array($statusLower, ['initial interview', 'final interview'])) :
                                                                 $interviewDate = $row['interview_date'] ? date('F j, Y', strtotime($row['interview_date'])) : '—';
                                                                 $interviewTime = $row['interview_date'] ? date('h:i A', strtotime($row['interview_date'])) : '—';
                                                             ?>
@@ -110,6 +110,8 @@ $result = $stmt->get_result();
                                                                 <p><strong>Comments:</strong> <?= nl2br(htmlspecialchars($row['hr_comment'] ?? '—')) ?></p>
                                                             <?php elseif ($statusLower === 'rejected') : ?>
                                                                 <p><strong>Reason:</strong> <?= nl2br(htmlspecialchars($row['hr_comment'] ?? '—')) ?></p>
+                                                            <?php elseif ($statusLower === 'hired') : ?>
+                                                                <p><strong>Comments:</strong> <?= nl2br(htmlspecialchars($row['hr_comment'] ?? '—')) ?></p>
                                                             <?php endif; ?>
                                                         </div>
                                                         <div class="modal-footer">
