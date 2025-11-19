@@ -7,12 +7,11 @@ redirectToLogin('Manager');
 
 $currentEmployeeID = $_SESSION['employeeID'];
 
-// Getting the current manager's department ID
+// FIXED: Removed applications table join
 $manager_dept_query = "
     SELECT p.department_id 
     FROM employees e
-    INNER JOIN applications a ON e.application_id = a.application_id
-    INNER JOIN positions p ON a.position_id = p.position_id
+    JOIN positions p ON e.position_id = p.position_id
     WHERE e.employee_id = '$currentEmployeeID'
 ";
 $manager_dept_result = mysqli_query($con, $manager_dept_query); 
@@ -37,6 +36,7 @@ if (isset($_POST['forward_to_hr'])) {
 
 // Fetch pending resignations for the manager's department
 if ($manager_department) {
+    // FIXED: Removed applications table join
     $resignations_query = "
         SELECT r.*, 
                c.first_name, c.last_name, 
@@ -44,13 +44,12 @@ if ($manager_department) {
                e.employment_status as working_status, 
                p.department_id
         FROM resignations r 
-        INNER JOIN employees e ON r.employee_id = e.employee_id 
-        INNER JOIN candidates c ON e.candidate_id = c.candidate_id
-        INNER JOIN applications a ON e.application_id = a.application_id
-        INNER JOIN positions p ON a.position_id = p.position_id
+        JOIN employees e ON r.employee_id = e.employee_id 
+        JOIN candidates c ON e.candidate_id = c.candidate_id
+        JOIN positions p ON e.position_id = p.position_id
         WHERE r.resignation_status = 'Pending' 
         AND p.department_id = '$manager_department'
-        and r.is_forwarded = 0
+        AND r.is_forwarded = 0
         ORDER BY r.resignation_date DESC
     ";
 
@@ -63,6 +62,7 @@ if ($manager_department) {
     }
 
     // Fetch processed resignations for the manager's department
+    // FIXED: Removed applications table join
     $processed_query = "
         SELECT r.*, 
                c.first_name, c.last_name, 
@@ -72,10 +72,9 @@ if ($manager_department) {
                approver_candidate.first_name as approver_first, 
                approver_candidate.last_name as approver_last
         FROM resignations r 
-        INNER JOIN employees e ON r.employee_id = e.employee_id 
-        INNER JOIN candidates c ON e.candidate_id = c.candidate_id
-        INNER JOIN applications a ON e.application_id = a.application_id
-        INNER JOIN positions p ON a.position_id = p.position_id
+        JOIN employees e ON r.employee_id = e.employee_id 
+        JOIN candidates c ON e.candidate_id = c.candidate_id
+        JOIN positions p ON e.position_id = p.position_id
         LEFT JOIN employees approver ON r.approved_by = approver.employee_id
         LEFT JOIN candidates approver_candidate ON approver.candidate_id = approver_candidate.candidate_id
         WHERE r.resignation_status != 'Pending' 
@@ -100,6 +99,7 @@ if ($manager_department) {
 $resignation_details = null;
 if (isset($_GET['view_resignation'])) {
     $resignation_id = mysqli_real_escape_string($con, $_GET['view_resignation']);
+    // FIXED: Removed applications table join
     $detail_query = "
         SELECT r.*, 
                c.first_name, c.last_name, 
@@ -108,10 +108,9 @@ if (isset($_GET['view_resignation'])) {
                approver_candidate.first_name as approver_first, 
                approver_candidate.last_name as approver_last
         FROM resignations r 
-        INNER JOIN employees e ON r.employee_id = e.employee_id 
-        INNER JOIN candidates c ON e.candidate_id = c.candidate_id
-        INNER JOIN applications a ON e.application_id = a.application_id
-        INNER JOIN positions p ON a.position_id = p.position_id
+        JOIN employees e ON r.employee_id = e.employee_id 
+        JOIN candidates c ON e.candidate_id = c.candidate_id
+        JOIN positions p ON e.position_id = p.position_id
         LEFT JOIN employees approver ON r.approved_by = approver.employee_id
         LEFT JOIN candidates approver_candidate ON approver.candidate_id = approver_candidate.candidate_id
         WHERE r.resignation_id = '$resignation_id'

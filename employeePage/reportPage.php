@@ -89,12 +89,11 @@ if (isset($_POST['submit'])) {
 $reportTypeQuery = "SELECT * FROM report_types";
 $reportTypeResult = mysqli_query($con, $reportTypeQuery);
 
-// Fetch employees (excluding the current user)
+// Fetch employees (excluding the current user) - FIXED: Removed applications table join
 $employeeQuery = "SELECT e.employee_id, c.first_name, c.last_name, p.position_name, d.department_name
                  FROM employees e
                  JOIN candidates c ON e.candidate_id = c.candidate_id
-                 JOIN applications a ON e.application_id = a.application_id
-                 JOIN positions p ON a.position_id = p.position_id
+                 JOIN positions p ON e.position_id = p.position_id
                  JOIN departments d ON p.department_id = d.department_id
                  WHERE e.employee_id != '$currentEmployeeID' AND e.status = 'Active'
                  ORDER BY c.first_name, c.last_name";

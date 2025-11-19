@@ -29,11 +29,10 @@ $requestQuery = "
 
 $myRequests = mysqli_query($con, $requestQuery);
 
-// QUERY FOR GETTING THE MANAGERS DEPARTMENT
+// FIXED: Removed applications table join
 $managerDeptQuery = "SELECT p.department_id, d.department_name
     FROM employees e 
-    JOIN applications a ON e.application_id = a.application_id 
-    JOIN positions p ON a.position_id = p.position_id 
+    JOIN positions p ON e.position_id = p.position_id 
     JOIN departments d ON p.department_id = d.department_id
     WHERE e.employee_id = '$currentEmployeeID'
 ";

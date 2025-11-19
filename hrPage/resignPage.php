@@ -9,7 +9,7 @@ $department_filter = isset($_GET['department']) ? $_GET['department'] : '';
 $status_filter = isset($_GET['status']) ? $_GET['status'] : '';
 $search_filter = isset($_GET['search']) ? $_GET['search'] : '';
 
-// Build the base query
+// Build the base query - FIXED: Removed applications table join
 $resignationsQuery = "
     SELECT 
         r.resignation_id,
@@ -30,8 +30,7 @@ $resignationsQuery = "
     FROM resignations r
     JOIN employees e ON r.employee_id = e.employee_id
     JOIN candidates c ON e.candidate_id = c.candidate_id
-    JOIN applications a ON e.application_id = a.application_id
-    JOIN positions p ON a.position_id = p.position_id
+    JOIN positions p ON e.position_id = p.position_id
     JOIN departments d ON p.department_id = d.department_id
     WHERE r.is_forwarded = 1
 ";

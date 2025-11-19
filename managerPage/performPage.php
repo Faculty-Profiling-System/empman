@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reviewee_id'])) {
                    AND reviewee_id = '$reviewee_id' 
                    AND period_id = '$period_id'
                    LIMIT 1";
-    $checkResult = mysqli_query($con, $checkQuery); // FIXED: Changed $checkResult to $checkQuery
+    $checkResult = mysqli_query($con, $checkQuery);
     
     if (mysqli_num_rows($checkResult) > 0) {
         $_SESSION['message'] = "You have already rated this employee for the current rating period.";
@@ -70,11 +70,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reviewee_id'])) {
     exit();
 }
 
-// Get current department
+// Get current department - FIXED: Removed applications table join
 $getCurrentDeptQuery = "SELECT p.department_id 
                        FROM employees e 
-                       JOIN applications a ON e.application_id = a.application_id 
-                       JOIN positions p ON a.position_id = p.position_id 
+                       JOIN positions p ON e.position_id = p.position_id 
                        WHERE e.employee_id = '$currentEmployeeID'";
 $currentDeptResult = mysqli_query($con, $getCurrentDeptQuery);
 $currentDept = mysqli_fetch_assoc($currentDeptResult);
@@ -354,11 +353,11 @@ foreach ($defaultRatings as $categoryId => $defaultValue) {
                 <select class="form-select" id="employeeName" name="reviewee_id" required>
                   <option value="">-- Choose Employee --</option>
                   <?php 
+                  // FIXED: Removed applications table join
                   $getEmployeesQuery = "SELECT e.employee_id, c.first_name, c.last_name 
                                       FROM employees e 
                                       JOIN candidates c ON e.candidate_id = c.candidate_id 
-                                      JOIN applications a ON e.application_id = a.application_id 
-                                      JOIN positions p ON a.position_id = p.position_id 
+                                      JOIN positions p ON e.position_id = p.position_id 
                                       WHERE p.department_id = '$currentDepartmentID' 
                                       AND e.employee_id != '$currentEmployeeID' 
                                       AND e.status = 'Active'";

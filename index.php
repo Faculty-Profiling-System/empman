@@ -12,6 +12,7 @@ if (isset($_POST['login'])) {
     $password = $_POST['password'];
     $loginErr = login($con, $employeeId, $password);
 }
+
 ?>
 
 <!DOCTYPE html>

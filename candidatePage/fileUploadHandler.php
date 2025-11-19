@@ -13,7 +13,8 @@ class FileUploadHandler {
         'Government ID' => '10v5BldoZ4NVg15QMh0NzzHrh8t0GM3rz',
         'Birth Certificate' => '1UGXE_bmtUe0OncGzZMwGAxlYe_K8lZei',
         'Diploma' => '19OGYblJ2vnt2Nnr6D32DLiBfnu05SKAd',
-        'Certificate' => '12yGy6aTXq7iERzrcViPpvPrxK0LD2OWZ'
+        'Certificate' => '12yGy6aTXq7iERzrcViPpvPrxK0LD2OWZ',
+        'Certificate of Employment' => '1805OXe930O9D1xCVBCco6NBxQC3RGvYR'
     ];
 
     public function __construct($conn, $accessToken = null) {

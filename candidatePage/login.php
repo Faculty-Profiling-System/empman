@@ -36,8 +36,9 @@ if(isset($_POST['login'])){
             $_SESSION['candidate_email'] = $user['login_identifier'];
             $_SESSION['candidate_firstName'] = $candidate['first_name'];
             $_SESSION['candidate_lastName'] = $candidate['last_name'];
+            $_SESSION['user_type'] = $candidate['last_name'];
 
-            header("Location: dashboard.php");
+            header("Location: candidPage/candidPage.php");
             exit();
         } else {
             $err = "Invalid password.";
